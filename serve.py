@@ -1,22 +1,36 @@
 #!/usr/bin/env python3
-"""StampIt — API + static file server with shared in-memory state."""
+"""StampIt — API + static file server with JSON-persisted state."""
 import http.server
 import json
 import os
 import re
 import socketserver
-import webbrowser
 import socket as _socket
 
 PORT = int(os.environ.get('PORT', 3000))
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# ---- Shared in-memory database (all devices read/write here) ----
-db = {
-    'customers':  {},   # id -> {id, name, createdAt}
-    'businesses': {},   # id -> {id, name, description, program, createdAt}
-    'cards':      {},   # "{customerId}_{businessId}" -> card
-}
+DATA_FILE = 'data.json'
+
+def load_db():
+    try:
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        # Ensure all expected keys exist (handles old/partial files)
+        return {
+            'customers':  data.get('customers',  {}),
+            'businesses': data.get('businesses', {}),
+            'cards':      data.get('cards',      {}),
+        }
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {'customers': {}, 'businesses': {}, 'cards': {}}
+
+def save_db():
+    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(db, f)
+
+# ---- Persistent database (survives server restarts) ----
+db = load_db()
 
 def get_local_ip():
     try:
@@ -82,10 +96,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         if path == '/api/register-customer':
             db['customers'][body['id']] = body
+            save_db()
             return self._json({'ok': True})
 
         if path == '/api/register-business':
             db['businesses'][body['id']] = body
+            save_db()
             return self._json({'ok': True})
 
         if path == '/api/join':
@@ -102,6 +118,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     'stamps': 0, 'totalVisits': 0, 'rewardsEarned': 0,
                     'joinedAt': body.get('timestamp', 0), 'lastVisit': None
                 }
+                save_db()
             return self._json({'card': db['cards'][key], 'alreadyMember': already})
 
         if path == '/api/stamp':
@@ -130,6 +147,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 card['stamps']        -= biz['program']['stampsNeeded']
                 card['rewardsEarned'] += 1
                 reward_earned          = True
+            save_db()
             return self._json({
                 'card': card,
                 'rewardEarned': reward_earned,
