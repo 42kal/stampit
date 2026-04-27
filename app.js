@@ -803,6 +803,8 @@ function manualJoin() {
 
 async function handleJoinScan(code, customerId) {
     stopScanner();
+    const box = document.querySelector('.scanner-box');
+    if (box) box.style.display = 'none';
     const bizId = code.startsWith('STAMPIT_JOIN:') ? code.slice(13) : code;
     const resultEl = document.getElementById('joinResult');
     if (!resultEl) return;
@@ -954,6 +956,8 @@ function manualStamp() {
 
 async function handleStampScan(code, businessId) {
     stopScanner();
+    const box = document.querySelector('.scanner-box');
+    if (box) box.style.display = 'none';
     const customerId = code.startsWith('STAMPIT_CUSTOMER:') ? code.slice(17) : code;
     const resultEl = document.getElementById('stampResult');
     if (!resultEl) return;
