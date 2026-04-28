@@ -175,9 +175,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
 
+    def end_headers(self):
+        # Prevent browsers from caching static files between deploys
+        if not self.path.startswith('/api/'):
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+        super().end_headers()
+
     def log_message(self, fmt, *args):
-        # Uncomment to debug requests:
-        # print(f"  {self.address_string()} {fmt % args}")
         pass
 
 
