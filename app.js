@@ -543,7 +543,10 @@ async function renderCustomerQR(customerId, customerName) {
             <div class="id-card">
                 <div class="id-card-top">
                     <div class="id-card-logo">StampIt</div>
-                    <div class="id-card-name">${escHtml(customerName)}</div>
+                    <div class="id-card-name" id="customerNameDisplay">
+                        ${escHtml(customerName)}
+                        <button class="name-edit-btn" onclick="startEditName()" title="Edit name">✏️</button>
+                    </div>
                     <div class="id-card-sub">Loyalty Member</div>
                 </div>
                 <div class="id-card-qr-section">
@@ -570,6 +573,44 @@ async function renderCustomerQR(customerId, customerName) {
     const cards = await api.getCards(customerId).catch(() => []);
     refreshShopCards(customerId, Array.isArray(cards) ? cards : []);
     startPolling(customerId);
+}
+
+// ---- Customer: Edit name inline ----
+function startEditName() {
+    const el = document.getElementById('customerNameDisplay');
+    if (!el) return;
+    const current = Session.get().customerName || '';
+    el.innerHTML = `
+        <div class="name-edit-row">
+            <input class="name-edit-input" id="nameEditInput" type="text"
+                value="${escHtml(current)}" maxlength="40"
+                onkeydown="if(event.key==='Enter')saveNewName();if(event.key==='Escape')cancelEditName()">
+            <button class="name-edit-confirm" onclick="saveNewName()">✓</button>
+            <button class="name-edit-cancel"  onclick="cancelEditName()">✕</button>
+        </div>`;
+    const input = document.getElementById('nameEditInput');
+    input.focus();
+    input.select();
+}
+
+async function saveNewName() {
+    const input = document.getElementById('nameEditInput');
+    if (!input) return;
+    const newName = input.value.trim();
+    if (!newName) { showToast('Name cannot be empty'); return; }
+    const s = Session.get();
+    try {
+        await api.registerCustomer({ id: s.customerId, name: newName, createdAt: Date.now() });
+        Session.set({ customerName: newName });
+        showToast('Name updated!');
+        renderApp();
+    } catch (e) {
+        showToast('Could not save — is the server running?');
+    }
+}
+
+function cancelEditName() {
+    renderApp();
 }
 
 // Build the live stamp card list (called on first render + after each poll hit)

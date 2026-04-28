@@ -1239,6 +1239,66 @@ input[type="number"] {
     letter-spacing: -0.5px;
 }
 
+.name-edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.6;
+    padding: 0 0 0 6px;
+    vertical-align: middle;
+    line-height: 1;
+    transition: opacity 0.15s;
+}
+
+.name-edit-btn:hover { opacity: 1; }
+
+.name-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+}
+
+.name-edit-input {
+    background: rgba(255,255,255,0.2);
+    border: 1.5px solid rgba(255,255,255,0.6);
+    border-radius: 8px;
+    color: var(--white);
+    font-size: 18px;
+    font-weight: 700;
+    font-family: inherit;
+    padding: 4px 10px;
+    text-align: center;
+    width: 160px;
+    outline: none;
+}
+
+.name-edit-input::placeholder { color: rgba(255,255,255,0.5); }
+.name-edit-input:focus { border-color: var(--white); background: rgba(255,255,255,0.3); }
+
+.name-edit-confirm,
+.name-edit-cancel {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: var(--transition);
+}
+
+.name-edit-confirm { background: rgba(255,255,255,0.9); color: var(--orange-dark); }
+.name-edit-confirm:hover { background: var(--white); }
+.name-edit-cancel  { background: rgba(255,255,255,0.2); color: var(--white); }
+.name-edit-cancel:hover  { background: rgba(255,255,255,0.35); }
+
 .id-card-sub {
     font-size: 11px;
     font-weight: 600;
