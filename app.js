@@ -55,8 +55,8 @@ const Session = {
 
 // ---- Constants ----
 const CARD_COLORS = [
-    '#2596be','#EF4444','#8B5CF6','#3B82F6',
-    '#10B981','#63b8d4','#EC4899','#06B6D4',
+    '#eb5c5c','#EF4444','#8B5CF6','#3B82F6',
+    '#10B981','#f09696','#EC4899','#06B6D4',
     '#6366F1','#14B8A6'
 ];
 const STAMP_ICONS = ['☕','🍕','🍔','🧁','💇','🛒','⭐','💎','🎯','❤️','🍩','🥤'];
@@ -161,14 +161,14 @@ function launchConfetti(stampCount = 1) {
         particleCount: particles,
         spread: 55 + (stampCount - 1) * 5,
         origin: { y: 0.5 },
-        colors: ['#2596be', '#FFFFFF', '#d1eaf4', '#1a7a9c'],
+        colors: ['#eb5c5c', '#FFFFFF', '#fbdede', '#c83e3e'],
         scalar: 0.9,
     });
 }
 
 function launchRewardConfetti() {
     if (typeof confetti === 'undefined') return;
-    const opts = { colors: ['#2596be', '#FFFFFF', '#d1eaf4', '#63b8d4', '#18181B'] };
+    const opts = { colors: ['#eb5c5c', '#FFFFFF', '#fbdede', '#f09696', '#18181B'] };
     confetti({ ...opts, particleCount: 120, spread: 80, origin: { y: 0.4 } });
     setTimeout(() => confetti({ ...opts, particleCount: 80, angle: 60,  spread: 50, origin: { x: 0, y: 0.6 } }), 250);
     setTimeout(() => confetti({ ...opts, particleCount: 80, angle: 120, spread: 50, origin: { x: 1, y: 0.6 } }), 250);
