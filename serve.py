@@ -124,6 +124,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path == '/api/stamp':
             cust_id = body.get('customerId')
             biz_id  = body.get('businessId')
+            count   = max(1, min(20, int(body.get('count', 1))))
             key     = f"{cust_id}_{biz_id}"
             cust    = db['customers'].get(cust_id)
             biz     = db['businesses'].get(biz_id)
@@ -139,18 +140,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     'joinedAt': body.get('timestamp', 0), 'lastVisit': None
                 }
             card = db['cards'][key]
-            card['stamps']      += 1
-            card['totalVisits'] += 1
+            card['stamps']      += count
+            card['totalVisits'] += count
             card['lastVisit']    = body.get('timestamp', 0)
-            reward_earned = False
-            if card['stamps'] >= biz['program']['stampsNeeded']:
+            rewards_earned = 0
+            while card['stamps'] >= biz['program']['stampsNeeded']:
                 card['stamps']        -= biz['program']['stampsNeeded']
                 card['rewardsEarned'] += 1
-                reward_earned          = True
+                rewards_earned        += 1
             save_db()
             return self._json({
-                'card': card,
-                'rewardEarned': reward_earned,
+                'card':         card,
+                'rewardEarned': rewards_earned > 0,
+                'rewardsCount': rewards_earned,
+                'stampsGiven':  count,
                 'customerName': cust['name']
             })
 

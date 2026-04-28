@@ -43,7 +43,7 @@ const api = {
     getCards:         (customerId) => api.get(`/api/cards/${customerId}`),
     getMembers:       (businessId) => api.get(`/api/members/${businessId}`),
     join:  (customerId, businessId) => api.post('/api/join',  { customerId, businessId, timestamp: Date.now() }),
-    stamp: (customerId, businessId) => api.post('/api/stamp', { customerId, businessId, timestamp: Date.now() }),
+    stamp: (customerId, businessId, count = 1) => api.post('/api/stamp', { customerId, businessId, count, timestamp: Date.now() }),
 };
 
 // ---- Session ----
@@ -154,11 +154,12 @@ function playRewardSound() {
 // ============================================
 // CONFETTI
 // ============================================
-function launchConfetti() {
+function launchConfetti(stampCount = 1) {
     if (typeof confetti === 'undefined') return;
+    const particles = Math.min(200, 70 + (stampCount - 1) * 40);
     confetti({
-        particleCount: 70,
-        spread: 55,
+        particleCount: particles,
+        spread: 55 + (stampCount - 1) * 5,
         origin: { y: 0.5 },
         colors: ['#2596be', '#FFFFFF', '#d1eaf4', '#1a7a9c'],
         scalar: 0.9,
@@ -176,7 +177,7 @@ function launchRewardConfetti() {
 // ============================================
 // STAMP NOTIFICATION OVERLAY
 // ============================================
-function showStampNotification(card, biz, rewardEarned) {
+function showStampNotification(card, biz, rewardEarned, stampCount = 1) {
     // Remove any existing notification
     const existing = document.getElementById('stampNotif');
     if (existing) existing.remove();
@@ -201,19 +202,21 @@ function showStampNotification(card, biz, rewardEarned) {
         playRewardSound();
         launchRewardConfetti();
     } else {
+        // Highlight the last `stampCount` newly filled dots
         const dotsHtml = Array.from({ length: p.stampsNeeded }, (_, i) => {
             const filled = i < card.stamps;
-            const isNew  = filled && i === card.stamps - 1;
+            const isNew  = filled && i >= card.stamps - stampCount;
             return `<div class="stamp-dot-lg ${filled ? 'filled' : 'empty'} ${isNew ? 'stamp-new' : ''}"
                 style="${filled ? `background:${p.cardColor}22;color:${p.cardColor}` : ''}">${filled ? p.stampIcon : ''}</div>`;
         }).join('');
 
+        const title   = stampCount > 1 ? `×${stampCount} Stamps!` : 'Stamped!';
         const remaining = p.stampsNeeded - card.stamps;
         el.innerHTML = `
             <div class="stamp-notif-backdrop" onclick="dismissStampNotif()"></div>
             <div class="stamp-notif-card">
-                <div class="stamp-notif-check">✓</div>
-                <div class="stamp-notif-title">Stamped!</div>
+                <div class="stamp-notif-check">${stampCount > 1 ? `×${stampCount}` : '✓'}</div>
+                <div class="stamp-notif-title">${title}</div>
                 <div class="stamp-notif-shop">${p.stampIcon} ${escHtml(biz.name)}</div>
                 <div class="stamp-notif-dots-wrap">${dotsHtml}</div>
                 <div class="stamp-notif-count">${card.stamps} <span class="stamp-notif-total">/ ${p.stampsNeeded}</span></div>
@@ -225,7 +228,7 @@ function showStampNotification(card, biz, rewardEarned) {
                 <button class="btn btn-primary btn-full mt-16" onclick="dismissStampNotif()">Got it!</button>
             </div>`;
         playStampSound();
-        launchConfetti();
+        launchConfetti(stampCount);
     }
 
     document.body.appendChild(el);
@@ -288,15 +291,15 @@ function startPolling(customerId) {
             if (changed) {
                 const biz = await api.getBusiness(changed.businessId);
                 if (biz && !biz.error) {
-                    // Update cache with latest data
+                    const key = `${changed.customerId}_${changed.businessId}`;
+                    const stampCount = changed.totalVisits - (prevCardState[key]?.totalVisits || changed.totalVisits - 1);
                     _bizCache[changed.businessId] = biz;
                     _lastCards = cards;
-                    // Switch to My Cards tab so the customer sees the stamp update
                     currentTab = 1;
                     selectedCardBiz = null;
                     stopPolling();
-                    renderCustomerApp(); // re-renders tab 1 instantly from cache
-                    setTimeout(() => showStampNotification(changed, biz, rewardEarned), 300);
+                    renderCustomerApp();
+                    setTimeout(() => showStampNotification(changed, biz, rewardEarned, Math.max(1, stampCount)), 300);
                 }
             }
         } catch (e) {}
@@ -425,6 +428,11 @@ function renderOwnerOnboarding() {
                     <label class="form-label">Reward Description</label>
                     <input type="text" class="form-input" id="obRewardDesc" placeholder="e.g. Any drink, on us!">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Stamp Quota</label>
+                    <input type="text" class="form-input" id="obStampQuota" placeholder="e.g. 1 stamp per 8 CHF spent">
+                    <p style="font-size:12px;color:var(--gray-400);margin-top:5px">Shown to customers so they know how to earn stamps.</p>
+                </div>
             </div>
 
             <div class="settings-section" style="width:100%;max-width:340px">
@@ -478,6 +486,7 @@ async function createBusiness() {
             stampsNeeded:       ob.stampCount,
             rewardName:         document.getElementById('obRewardName').value.trim() || 'Free Item',
             rewardDescription:  document.getElementById('obRewardDesc').value.trim() || 'Enjoy a free item on us!',
+            stampQuota:         document.getElementById('obStampQuota').value.trim(),
             stampIcon:          ob.icon,
             cardColor:          ob.color
         },
@@ -753,6 +762,14 @@ async function renderCustomerCardDetail(customerId, businessId) {
                             <p>${escHtml(p.rewardDescription)}</p>
                         </div>
                     </div>
+                    ${p.stampQuota ? `
+                    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--gray-50);border-radius:var(--radius);margin-bottom:16px;border:1px solid var(--gray-200)">
+                        <span style="font-size:18px">🎟️</span>
+                        <div>
+                            <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px">How to earn stamps</div>
+                            <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:1px">${escHtml(p.stampQuota)}</div>
+                        </div>
+                    </div>` : ''}
                     <div style="font-size:16px;font-weight:700;margin-bottom:4px">Your Progress</div>
                     <p style="font-size:13px;color:var(--gray-500);margin-bottom:8px">
                         ${card.stamps} of ${p.stampsNeeded} stamps · ${p.stampsNeeded - card.stamps} more to reward
@@ -930,9 +947,18 @@ async function renderOwnerDashboard(businessId) {
 
 // ---- Owner: Scanner ----
 function renderOwnerScanner(businessId) {
+    window._scanStampCount = 1;
     const vc = document.getElementById('viewContent');
     vc.innerHTML = `
         <div class="section-header"><h2>Stamp a Card</h2><p>Scan a customer's QR code</p></div>
+        <div class="stamp-qty-bar">
+            <span class="stamp-qty-label">Stamps to give</span>
+            <div class="stamp-qty-controls">
+                <button class="stamp-qty-btn" onclick="adjustScanCount(-1)">−</button>
+                <span class="stamp-qty-val" id="scanStampCount">1</span>
+                <button class="stamp-qty-btn" onclick="adjustScanCount(1)">+</button>
+            </div>
+        </div>
         <div class="scanner-container">
             <div class="scanner-box"><div id="qr-reader"></div></div>
             <details class="manual-entry" open>
@@ -949,6 +975,12 @@ function renderOwnerScanner(businessId) {
     startScanner('qr-reader', code => handleStampScan(code, businessId));
 }
 
+function adjustScanCount(d) {
+    window._scanStampCount = Math.max(1, Math.min(20, (window._scanStampCount || 1) + d));
+    const el = document.getElementById('scanStampCount');
+    if (el) el.textContent = window._scanStampCount;
+}
+
 function manualStamp() {
     const code = document.getElementById('manualStampCode').value.trim();
     if (code) handleStampScan(code, Session.get().businessId);
@@ -956,6 +988,7 @@ function manualStamp() {
 
 async function handleStampScan(code, businessId) {
     stopScanner();
+    const count = window._scanStampCount || 1;
     const box = document.querySelector('.scanner-box');
     if (box) box.style.display = 'none';
     const customerId = code.startsWith('STAMPIT_CUSTOMER:') ? code.slice(17) : code;
@@ -964,7 +997,7 @@ async function handleStampScan(code, businessId) {
     resultEl.innerHTML = loading('Stamping…');
     try {
         const [data, biz] = await Promise.all([
-            api.stamp(customerId, businessId),
+            api.stamp(customerId, businessId, count),
             api.getBusiness(businessId)
         ]);
         if (data.error) {
@@ -977,16 +1010,17 @@ async function handleStampScan(code, businessId) {
                 </div>`;
             return;
         }
-        const { card, rewardEarned, customerName } = data;
-        const isNew = card.totalVisits === 1;
+        const { card, rewardEarned, rewardsCount, stampsGiven, customerName } = data;
+        const isNew = card.totalVisits <= stampsGiven;
+        const stampLabel = stampsGiven > 1 ? `×${stampsGiven} stamps` : '1 stamp';
         if (rewardEarned) {
             resultEl.innerHTML = `
                 <div class="scan-result success">
                     <div class="scan-result-icon">🏆</div>
-                    <h3>Reward Earned!</h3>
-                    <p><strong>${escHtml(customerName)}</strong> completed their card!</p>
+                    <h3>Reward${rewardsCount > 1 ? 's' : ''} Earned!</h3>
+                    <p><strong>${escHtml(customerName)}</strong> · ${stampLabel} given</p>
                     <div class="stamp-count">${biz.program.stampIcon} ${escHtml(biz.program.rewardName)}</div>
-                    <p style="color:var(--gray-500);margin-top:4px">Their <strong>${card.rewardsEarned}${ordinal(card.rewardsEarned)}</strong> reward</p>
+                    <p style="color:var(--gray-500);margin-top:4px">${rewardsCount > 1 ? `<strong>${rewardsCount}</strong> rewards this scan!` : `Their <strong>${card.rewardsEarned}${ordinal(card.rewardsEarned)}</strong> reward`}</p>
                     <div style="margin-top:16px;padding:12px;background:var(--orange-50);border-radius:var(--radius)">
                         <p style="font-size:13px;font-weight:700;color:var(--orange-dark)">Give them their reward!</p>
                     </div>
@@ -996,11 +1030,11 @@ async function handleStampScan(code, businessId) {
             const pct = (card.stamps / biz.program.stampsNeeded) * 100;
             resultEl.innerHTML = `
                 <div class="scan-result success">
-                    <div class="scan-result-icon">${isNew ? '🎉' : '✅'}</div>
-                    <h3>${isNew ? 'New Member!' : 'Stamped!'}</h3>
-                    <p><strong>${escHtml(customerName)}</strong> · ${card.totalVisits} total visit${card.totalVisits !== 1 ? 's' : ''}</p>
+                    <div class="scan-result-icon">${isNew ? '🎉' : stampsGiven > 1 ? '🌟' : '✅'}</div>
+                    <h3>${isNew ? 'New Member!' : stampsGiven > 1 ? `×${stampsGiven} Stamps!` : 'Stamped!'}</h3>
+                    <p><strong>${escHtml(customerName)}</strong> · ${stampLabel} given</p>
                     <div class="stamp-count">${card.stamps}<span style="font-size:20px;font-weight:500;color:var(--gray-400)"> / ${biz.program.stampsNeeded}</span></div>
-                    <p style="color:var(--gray-500)">stamps collected</p>
+                    <p style="color:var(--gray-500)">stamps on card</p>
                     <div style="margin-top:12px">
                         <div class="progress-bar" style="height:10px">
                             <div class="progress-fill" style="width:${pct}%;background:${biz.program.cardColor}"></div>
@@ -1065,6 +1099,11 @@ async function renderOwnerProgram(businessId) {
                         <label class="form-label">Reward Description</label>
                         <input type="text" class="form-input" id="epRewardDesc" value="${escHtml(p.rewardDescription)}">
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Stamp Quota</label>
+                        <input type="text" class="form-input" id="epStampQuota" value="${escHtml(p.stampQuota || '')}" placeholder="e.g. 1 stamp per 8 CHF spent">
+                        <p style="font-size:12px;color:var(--gray-400);margin-top:5px">Shown to customers so they know how to earn stamps.</p>
+                    </div>
                 </div>
                 <div class="settings-section">
                     <h3>Appearance</h3>
@@ -1110,6 +1149,7 @@ async function saveProgram(businessId) {
         biz.program.stampsNeeded      = ep.stampCount;
         biz.program.rewardName        = document.getElementById('epRewardName').value.trim() || biz.program.rewardName;
         biz.program.rewardDescription = document.getElementById('epRewardDesc').value.trim() || biz.program.rewardDescription;
+        biz.program.stampQuota        = document.getElementById('epStampQuota').value.trim();
         biz.program.stampIcon         = ep.icon;
         biz.program.cardColor         = ep.color;
         await api.registerBusiness(biz);

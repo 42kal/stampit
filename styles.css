@@ -694,6 +694,60 @@ textarea.form-input {
     color: var(--white);
 }
 
+/* ============ STAMP QTY BAR (owner scanner) ============ */
+.stamp-qty-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--orange-50);
+    border-bottom: 1px solid var(--orange-light);
+}
+
+.stamp-qty-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gray-700);
+}
+
+.stamp-qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.stamp-qty-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--orange-light);
+    background: var(--white);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--orange);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    transition: var(--transition);
+    line-height: 1;
+}
+
+.stamp-qty-btn:hover {
+    background: var(--orange);
+    color: var(--white);
+    border-color: var(--orange);
+}
+
+.stamp-qty-val {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--orange);
+    min-width: 32px;
+    text-align: center;
+}
+
 /* ============ SCANNER ============ */
 .scanner-container {
     padding: 20px;
