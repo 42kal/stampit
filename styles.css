@@ -4,11 +4,11 @@
    ============================================ */
 
 :root {
-    --orange: #F97316;
-    --orange-light: #FFEDD5;
-    --orange-50: #FFF7ED;
-    --orange-dark: #EA580C;
-    --orange-900: #7C2D12;
+    --orange: #2596be;
+    --orange-light: #d1eaf4;
+    --orange-50: #e8f4fa;
+    --orange-dark: #1a7a9c;
+    --orange-900: #0d4a61;
     --black: #18181B;
     --gray-900: #27272A;
     --gray-700: #3F3F46;
@@ -331,7 +331,7 @@ body {
 
 .form-input:focus {
     border-color: var(--orange);
-    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+    box-shadow: 0 0 0 3px rgba(37, 150, 190, 0.1);
 }
 
 .form-input::placeholder {
@@ -863,7 +863,7 @@ textarea.form-input {
 .icon-option.selected {
     border-color: var(--orange);
     background: var(--orange-50);
-    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+    box-shadow: 0 0 0 2px rgba(37, 150, 190, 0.2);
 }
 
 .stamp-count-selector {
@@ -1158,7 +1158,7 @@ input[type="number"] {
     max-width: 340px;
     background: var(--white);
     border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(249,115,22,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(37,150,190,0.08);
     border: 1.5px solid var(--gray-200);
     overflow: hidden;
 }
