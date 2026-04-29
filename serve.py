@@ -72,6 +72,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             obj = db['businesses'].get(m.group(1))
             return self._json(obj if obj else {'error': 'Not found'}, 200 if obj else 404)
 
+        m = re.match(r'^/api/customer/([^/]+)$', path)
+        if m:
+            obj = db['customers'].get(m.group(1))
+            return self._json(obj if obj else {'error': 'Not found'}, 200 if obj else 404)
+
         m = re.match(r'^/api/cards/([^/]+)$', path)
         if m:
             cards = [c for c in db['cards'].values() if c['customerId'] == m.group(1)]

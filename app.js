@@ -39,6 +39,7 @@ const api = {
     },
     registerCustomer: (c)          => api.post('/api/register-customer', c),
     registerBusiness: (b)          => api.post('/api/register-business', b),
+    getCustomer:      (id)         => api.get(`/api/customer/${id}`),
     getBusiness:      (id)         => api.get(`/api/business/${id}`),
     getCards:         (customerId) => api.get(`/api/cards/${customerId}`),
     getMembers:       (businessId) => api.get(`/api/members/${businessId}`),
@@ -526,13 +527,77 @@ function renderCustomerApp() {
         { icon: '💳', label: 'My Cards' },
         { icon: '📷', label: 'Join Shop' }
     ];
-    appEl().innerHTML = appShell(tabs, 'Owner Mode', loading());
+    appEl().innerHTML = appShell(tabs, 'Owner Mode', loading('Checking profile…'));
+
     const views = [
         () => renderCustomerQR(s.customerId, s.customerName),
         () => renderCustomerCards(s.customerId),
         () => renderCustomerScanJoin(s.customerId)
     ];
-    views[currentTab]();
+
+    // Validate the stored customer ID still exists on the server
+    api.getCustomer(s.customerId)
+        .then(cust => {
+            if (cust && cust.error) {
+                renderCustomerRecovery(s.customerId, s.customerName);
+            } else {
+                views[currentTab]();
+            }
+        })
+        .catch(() => views[currentTab]()); // server unreachable — proceed, will fail gracefully
+}
+
+function renderCustomerRecovery(customerId, savedName) {
+    const vc = document.getElementById('viewContent');
+    vc.innerHTML = `
+        <div class="empty-state" style="padding:48px 24px">
+            <div class="empty-state-icon">⚠️</div>
+            <h3>Profile Not Found</h3>
+            <p>The server was reset and your profile is missing. You can continue with your saved name or start fresh.</p>
+            <button class="btn btn-primary btn-full" style="max-width:300px;margin-bottom:12px"
+                onclick="reRegisterCustomer()">
+                Continue as <strong>${escHtml(savedName)}</strong>
+            </button>
+            <button class="btn btn-secondary btn-full" style="max-width:300px"
+                onclick="resetCustomerProfile()">
+                Create new profile
+            </button>
+        </div>`;
+}
+
+async function reRegisterCustomer() {
+    const s = Session.get();
+    try {
+        await api.registerCustomer({ id: s.customerId, name: s.customerName, createdAt: Date.now() });
+        showToast('Profile restored!');
+        renderApp();
+    } catch (e) {
+        showToast('Could not reach server — try again');
+    }
+}
+
+function confirmResetProfile() {
+    const vc = document.getElementById('viewContent');
+    if (!vc) return;
+    stopPolling();
+    vc.innerHTML = `
+        <div class="empty-state" style="padding:48px 24px">
+            <div class="empty-state-icon">🗑️</div>
+            <h3>Reset Profile?</h3>
+            <p>This removes your profile from this device. Your loyalty cards on the server are not deleted — you can rejoin shops after creating a new profile.</p>
+            <button class="btn btn-primary btn-full" style="max-width:300px;margin-bottom:12px;background:#ef4444;border-color:#ef4444"
+                onclick="resetCustomerProfile()">Yes, reset profile</button>
+            <button class="btn btn-secondary btn-full" style="max-width:300px"
+                onclick="renderApp()">Cancel</button>
+        </div>`;
+}
+
+function resetCustomerProfile() {
+    Session.clear('customerId');
+    Session.clear('customerName');
+    _lastCards = null;
+    _bizCache  = {};
+    renderApp();
 }
 
 // ---- Customer: My QR (Card-style with live stamp dots) ----
@@ -566,6 +631,10 @@ async function renderCustomerQR(customerId, customerName) {
                 <p style="font-size:11px;color:var(--gray-500);font-family:monospace;word-break:break-all;cursor:pointer"
                    onclick="copyCode('STAMPIT_CUSTOMER:${customerId}')">STAMPIT_CUSTOMER:${customerId}</p>
             </div>
+
+            <button class="reset-profile-btn" onclick="confirmResetProfile()">
+                Reset profile
+            </button>
         </div>`;
 
     makeQR('customerQR', `STAMPIT_CUSTOMER:${customerId}`);
